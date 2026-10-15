@@ -1,0 +1,251 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 0. Global Safety Net Default-Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ================= GLOBAL HELPERS =================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Secure Role Check: Look up trusted admin document or owner identity
+    // Never trust client-supplied isAdmin fields or claims
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == "flowwithraees@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    // ================= 1. USERS COLLECTION =================
+    // Public profiles
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && incoming().displayName is string && incoming().displayName.size() <= 100
+                    && incoming().role == "user" // prevent self-assigned admin
+                    && incoming().travelKarma is number
+                    && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && incoming().role == existing().role && incoming().createdAt == existing().createdAt)
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      // Private User Data subcollection (PII Isolation: email, emergency contacts)
+      match /private/{docId} {
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      }
+    }
+
+    // ================= 2. PLACES COLLECTION =================
+    match /places/{placeId} {
+      // Public users can read approved places; creators can see their own; admins can see all
+      allow get: if resource.data.status == "approved" 
+                 || (isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()));
+      allow list: if resource.data.status == "approved" 
+                  || (isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()));
+
+      // Authenticated users can submit places in "pending" status without self-verifying
+      allow create: if isSignedIn() 
+                    && isValidId(placeId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().status == "pending"
+                    && incoming().verified == false
+                    && incoming().name is string && incoming().name.size() <= 120
+                    && incoming().type in ["food", "stay", "water", "camping", "shower", "charging"]
+                    && incoming().description is string && incoming().description.size() <= 1000
+                    && incoming().priceMin is number && incoming().priceMax is number
+                    && incoming().createdAt == request.time;
+
+      // Creator can edit their description/timing without changing status/verified
+      // Admin can update any fields (including approving/verifying)
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          existing().createdBy == request.auth.uid
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().verified == existing().verified // users CANNOT change verification
+          && incoming().status == existing().status     // users CANNOT change moderation status
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'priceMin', 'priceMax', 'timing', 'tags', 'photoUrl', 'updatedAt'])
+          && incoming().updatedAt == request.time
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().createdBy == request.auth.uid && existing().status == "pending");
+    }
+
+    // ================= 3. HITCHHIKING SPOTS =================
+    match /hitchhikingSpots/{spotId} {
+      allow get: if resource.data.status == "approved" 
+                 || (isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()));
+      allow list: if resource.data.status == "approved" 
+                  || (isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()));
+
+      allow create: if isSignedIn() 
+                    && isValidId(spotId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().status == "pending"
+                    && incoming().name is string && incoming().name.size() <= 120
+                    && incoming().roadName is string && incoming().roadName.size() <= 100
+                    && incoming().direction is string && incoming().direction.size() <= 200
+                    && incoming().difficulty in ["Easy", "Moderate", "Challenging"]
+                    && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          existing().createdBy == request.auth.uid
+          && incoming().createdBy == existing().createdBy
+          && incoming().createdAt == existing().createdAt
+          && incoming().status == existing().status // moderation status locked to admin
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'notes', 'bestTime', 'averageWaitMinutes', 'vehicleTypes', 'photoUrl', 'updatedAt'])
+          && incoming().updatedAt == request.time
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().createdBy == request.auth.uid && existing().status == "pending");
+    }
+
+    // ================= 4. REPORTS =================
+    match /reports/{reportId} {
+      allow read: if resource.data.status == "approved" || (isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin()));
+      
+      // Authenticated users can create reports for places or spots
+      allow create: if isSignedIn() 
+                    && isValidId(reportId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().userId == request.auth.uid
+                    && incoming().targetType in ["place", "hitchhikingSpot"]
+                    && incoming().rating >= 1 && incoming().rating <= 5
+                    && incoming().comment is string && incoming().comment.size() <= 1000
+                    && incoming().createdAt == request.time;
+
+      // Users cannot modify another user's rating or report
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          existing().createdBy == request.auth.uid
+          && incoming().createdBy == existing().createdBy
+          && incoming().userId == existing().userId
+          && incoming().targetId == existing().targetId
+          && incoming().targetType == existing().targetType
+          && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'pricePaid', 'visitedAt', 'updatedAt'])
+          && incoming().updatedAt == request.time
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().createdBy == request.auth.uid);
+    }
+
+    // ================= 5. JOURNEYS =================
+    match /journeys/{journeyId} {
+      allow get: if true;
+      allow list: if isSignedIn() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn()
+                    && isValidId(journeyId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().from is string && incoming().to is string
+                    && incoming().budget is number && incoming().days is number
+                    && incoming().travelStyle in ["Cheapest", "Balanced", "Adventure"];
+
+      allow update: if isSignedIn() && (existing().createdBy == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().createdBy == request.auth.uid || isAdmin());
+    }
+
+    // ================= 6. TRAVELLER POSTS =================
+    match /travellerPosts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+                    && isValidId(postId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().authorId == request.auth.uid
+                    && incoming().title is string && incoming().title.size() <= 150
+                    && incoming().content is string && incoming().content.size() <= 2000
+                    && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        // User updating their own post
+        (
+          existing().createdBy == request.auth.uid
+          && incoming().createdBy == existing().createdBy
+          && incoming().authorId == existing().authorId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'tips', 'route', 'costPerDay', 'photoUrl', 'updatedAt'])
+          && incoming().updatedAt == request.time
+        ) ||
+        // Other authenticated users incrementing/decrementing likesCount
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['likes'])
+          && incoming().likes is number
+        )
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && existing().createdBy == request.auth.uid);
+    }
+
+    // ================= 7. SAVED TRIPS =================
+    match /savedTrips/{tripId} {
+      allow read: if isSignedIn() && (resource.data.createdBy == request.auth.uid || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+                    && isValidId(tripId)
+                    && incoming().createdBy == request.auth.uid
+                    && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().createdBy == request.auth.uid;
+      allow delete: if isSignedIn() && (existing().createdBy == request.auth.uid || isAdmin());
+    }
+
+    // ================= 8. NOTIFICATIONS =================
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin() || (isSignedIn() && incoming().createdBy == request.auth.uid);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt']);
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // ================= 9. ADMINS TABLE =================
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ================= 10. DESTINATIONS (CMS) =================
+    match /destinations/{destId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ================= 11. BANNERS =================
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ================= 12. APP SETTINGS =================
+    match /appSettings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
+

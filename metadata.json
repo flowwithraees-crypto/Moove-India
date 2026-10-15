@@ -1,0 +1,6 @@
+{
+  "name": "RoamLite India",
+  "description": "Community-powered ultra-budget travel platform for backpackers and travellers exploring India with hitchhiking, cheap eats, and budget stays.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
