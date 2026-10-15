@@ -131,7 +131,7 @@ export const generateBudgetJourney = async (params: {
       description: 'Start early morning by 06:30 AM to arrive before dusk. National highway emergency line: 1033.',
       cost: 0,
       informationType: 'AI_SUGGESTION',
-      sourceName: 'RoamLite Backpacking Coach',
+      sourceName: 'Moove Backpacking Coach',
     },
   ];
 
@@ -298,7 +298,7 @@ export const travelAssistant = async (
   }
 
   if (q.includes('water') || q.includes('ro water')) {
-    return `💧 RoamLite Water Rule: Never spend ₹20 on single-use bottled water! Every major Indian Railways station features automated IRCTC RO Water kiosks dispensing WHO-standard filtered water for just ₹5 per litre. Bring your own 1L insulated flask and save up to ₹1,500 over a month.`;
+    return `💧 Moove Water Rule: Never spend ₹20 on single-use bottled water! Every major Indian Railways station features automated IRCTC RO Water kiosks dispensing WHO-standard filtered water for just ₹5 per litre. Bring your own 1L insulated flask and save up to ₹1,500 over a month.`;
   }
 
   if (q.includes('free food') || q.includes('langar')) {
@@ -308,7 +308,7 @@ export const travelAssistant = async (
 - Backpacker Etiquette: Cover your head, take off your shoes, never waste any food on your plate, and offer volunteer service (sewa) like washing dishes or sweeping if you have 30 minutes!`;
   }
 
-  return `Namaste nomad! As your RoamLite guide, I recommend exploring our community-verified spots along Indian highway corridors. You can find free Gurudwara langars, ₹5 railway RO water ATMs, and safe toll bay hitchhiking spots directly on the Map tab. Always travel daylight-first and keep your emergency helpline (1033 / 112) handy!`;
+  return `Namaste nomad! As your Moove guide, I recommend exploring our community-verified spots along Indian highway corridors. You can find free Gurudwara langars, ₹5 railway RO water ATMs, and safe toll bay hitchhiking spots directly on the Map tab. Always travel daylight-first and keep your emergency helpline (1033 / 112) handy!`;
 };
 
 /**

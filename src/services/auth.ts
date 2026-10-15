@@ -12,8 +12,8 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from './firebase';
 import { UserProfile } from '../types';
 
-const STORAGE_KEY = 'wayroo_current_user';
-const PENDING_ACTION_KEY = 'wayroo_pending_action';
+const STORAGE_KEY = 'moove_current_user';
+const PENDING_ACTION_KEY = 'moove_pending_action';
 
 // Pending action callback mechanism (e.g. user clicked "Add Spot", prompted to sign in, resumes action)
 export interface PendingAction {
@@ -61,7 +61,7 @@ const notifyListeners = () => {
 
 // Helper: Check if user has an admin record in Firestore or admin email
 async function verifyAdminRole(uid: string, email?: string | null): Promise<boolean> {
-  if (email && (email.toLowerCase() === 'flowwithraees@gmail.com' || email.toLowerCase().includes('admin@wayroo.in'))) {
+  if (email && (email.toLowerCase() === 'flowwithraees@gmail.com' || email.toLowerCase().includes('admin@moove.in'))) {
     return true;
   }
   if (!isFirebaseConfigured() || !db) return false;
@@ -169,22 +169,22 @@ export const signInWithGoogle = async (): Promise<UserProfile> => {
     return user;
   }
 
-  // Demo user for environment when Firebase Auth is in preview mode
-  const demoUser: UserProfile = {
-    id: 'user_google_' + Date.now().toString(36),
-    email: 'flowwithraees@gmail.com',
-    displayName: 'Raees (Moove Nomad)',
+  // Fallback profile when running in offline/local mode
+  const fallbackUser: UserProfile = {
+    id: 'user_' + Date.now().toString(36),
+    email: 'traveller@moove.in',
+    displayName: 'Moove Traveller',
     photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    bio: 'Hitchhiking India on ₹500/day. Backpacker & community contributor.',
-    role: 'admin',
-    travelKarma: 480,
-    badges: ['Highway Veteran', 'Top Verifier', 'Community Guardian'],
+    bio: 'Backpacker & budget travel contributor across India.',
+    role: 'user',
+    travelKarma: 100,
+    badges: ['Verified Backpacker', 'Community Nomad'],
     createdAt: new Date().toISOString()
   };
-  currentUserProfile = demoUser;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser));
+  currentUserProfile = fallbackUser;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackUser));
   notifyListeners();
-  return demoUser;
+  return fallbackUser;
 };
 
 export const signInWithEmail = async (email: string, pass: string): Promise<UserProfile> => {
@@ -291,28 +291,6 @@ export const signOut = async (): Promise<void> => {
   notifyListeners();
 };
 
-export const switchRoleForDemo = (role: 'user' | 'admin') => {
-  if (!currentUserProfile) {
-    currentUserProfile = {
-      id: 'demo_user',
-      role,
-      displayName: role === 'admin' ? 'Community Guardian (Admin)' : 'Arjun Nomad',
-      email: role === 'admin' ? 'admin@wayroo.in' : 'arjun@wayroo.in',
-      travelKarma: role === 'admin' ? 850 : 120,
-      badges: role === 'admin' ? ['Admin & Moderator', 'Top Verifier'] : ['Backpacker Club'],
-      createdAt: new Date().toISOString()
-    };
-  } else {
-    currentUserProfile = {
-      ...currentUserProfile,
-      role,
-      displayName: role === 'admin' && !currentUserProfile.displayName.includes('Admin') 
-        ? `${currentUserProfile.displayName} (Admin)` 
-        : currentUserProfile.displayName
-    };
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentUserProfile));
-  notifyListeners();
-};
+
 
 export const getCurrentUser = (): UserProfile | null => currentUserProfile;

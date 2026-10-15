@@ -38,7 +38,7 @@ export const PWAInstallButton: React.FC = () => {
             <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl text-slate-100">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-bold text-amber-400 flex items-center gap-2">
-                  <Smartphone className="w-5 h-5" /> Install RoamLite on iPhone
+                  <Smartphone className="w-5 h-5" /> Install Moove on iPhone
                 </h3>
                 <button 
                   onClick={() => setShowIOSGuide(false)}

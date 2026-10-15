@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SavedTrip, PlaceDocument, HitchhikingSpot } from '../types';
 import { getSavedTrips, getAllPlacesForAdmin, getAllHitchhikingSpotsForAdmin } from '../services/firestore';
-import { signOut, switchRoleForDemo } from '../services/auth';
+import { signOut } from '../services/auth';
 import { 
   User, 
   Award, 

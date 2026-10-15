@@ -4,7 +4,6 @@ import {
   signInWithEmail, 
   signUpWithEmail, 
   resetPassword,
-  switchRoleForDemo,
   getPendingAuthAction 
 } from '../../services/auth';
 import { UserProfile } from '../../types';
@@ -92,10 +91,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleQuickDemo = () => {
-    switchRoleForDemo('user');
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -204,7 +199,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nomad@wayroo.in"
+                placeholder="nomad@moove.in"
                 className="w-full rounded-xl bg-[#F8FAF7] border border-[#E2E8E3] py-2.5 pl-9 pr-3 text-xs text-[#17211B] placeholder-[#66736B] focus:border-[#1F7A4D] focus:bg-white focus:outline-none transition"
               />
             </div>
@@ -338,19 +333,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
         </div>
 
-        {/* Instant test credentials helper (Nomad traveller) */}
-        <div className="mt-3 p-2.5 rounded-xl bg-[#F8FAF7] border border-[#E2E8E3] text-[11px] text-[#66736B]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="font-semibold text-[#17211B]">Instant Test Access:</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleQuickDemo}
-            className="w-full py-1.5 px-3 rounded-lg bg-white border border-[#E2E8E3] hover:border-[#1F7A4D] font-medium text-[11px] text-[#17211B] text-center transition hover:bg-[#E8F5EC]"
-          >
-            Sign In as Arjun (Verified Nomad Demo)
-          </button>
-        </div>
       </div>
     </div>
   );

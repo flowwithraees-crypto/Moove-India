@@ -673,7 +673,7 @@ export const getUsersForAdmin = async (): Promise<UserProfile[]> => {
     {
       id: 'usr_nomad_2',
       displayName: 'Kabir Nomad',
-      email: 'kabir@wayroo.in',
+      email: 'kabir@moove.in',
       role: 'user',
       travelKarma: 180,
       badges: ['Highway Veteran', 'Langar Regular'],
@@ -682,7 +682,7 @@ export const getUsersForAdmin = async (): Promise<UserProfile[]> => {
     {
       id: 'usr_nomad_3',
       displayName: 'Maya Backpacker',
-      email: 'maya@wayroo.in',
+      email: 'maya@moove.in',
       role: 'user',
       travelKarma: 95,
       badges: ['Verified Nomad'],
